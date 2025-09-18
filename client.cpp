@@ -17,7 +17,30 @@ using namespace std;
 
 
 int main (int argc, char *argv[]) {
-  int pid = fork();
+  int opt;
+  int p = 1;
+  double t = 0.0;
+  int e = 1;
+  string filename = "";
+  
+  while ((opt = getopt(argc, argv, "p:t:e:f:")) != -1) {
+    switch (opt) {
+    case 'p':
+      p = atoi (optarg);
+      break;
+    case 't':
+      t = atof (optarg);
+      break;
+    case 'e':
+      e = atoi (optarg);
+      break;
+    case 'f':
+      filename = optarg;
+      break;
+    }
+  }
+  
+  pid_t pid = fork();
   if (pid == 0){//instance is child
     char* args[] = { (char*)"./server",NULL};
     execvp(args[0], args);
@@ -26,41 +49,65 @@ int main (int argc, char *argv[]) {
     usleep(100000);
     FIFORequestChannel* control_channel = new FIFORequestChannel("control", FIFORequestChannel::CLIENT_SIDE);
     vector<FIFORequestChannel*> data_channels;
-    MESSAGE_TYPE new_channel_msg = NEWCHANNEL_MSG;
-    control_channel->cwrite(&new_channel_msg, sizeof(new_channel_msg));
-    
-    char new_channel_name[1024];
-    control_channel->cread(new_channel_name, sizeof(new_channel_name));
 
-    FIFORequestChannel* new_data_channel = new FIFORequestChannel(string(new_channel_name), FIFORequestChannel::CLIENT_SIDE);
-    data_channels.push_back(new_data_channel);
+    if (filename != "") {
+      filemsg fm(0,0);
+      int msg_size = sizeof(filemsg) + filename.size() + 1;
+      char* request = new char[msg_size];
+      memcpy(request, &fm, sizeof(filemsg));
+      strcpy(request + sizeof(filemsg), filename.c_str());
+      control_channel->cwrite(request, msg_size);
+      __int64_t file_size;
+      control_channel->cread(&file_size, sizeof(file_size));
+      system("mkdir -p recieved");
+      string out_path = "recieved/" + filename;
+      ofstream outfile(out_path, ios::binary);
+      __int64_t remaining = file_size;
+      __int64_t offset = 0;
+      while (remaining > 0){
+	int chunk = min((__int64_t)MAX_MESSAGE, remaining);
+	filemsg fm_chunk(offset, chunk);
+	int msg_len = sizeof(filemsg) + filename.size() + 1;
+	char* msg_buf = new char[msg_len];
+	memcpy(msg_buf, &fm_chunk,sizeof(filemsg));
+	strcpy(msg_buf + sizeof(filemsg), filename.c_str());
+	control_channel->cwrite(msg_buf,msg_len);
+	char* response_buf = new char[chunk];
+	int bytes_read = control_channel->cread(response_buf, chunk);
+	outfile.write(response_buf, bytes_read);
 
-    datamsg dmsg(1, .004, 1);
-    new_data_channel->cwrite(&dmsg, sizeof(datamsg));
-
-    double data;
-    new_data_channel->cread(&data, sizeof(double));
-    cout << "Recieved data: " << data << endl;
-    
-    MESSAGE_TYPE q = QUIT_MSG;
-
-    for (auto ch : data_channels){
-      ch->cwrite(&q,sizeof(q));
-      delete ch;
+	delete[] msg_buf;
+	delete[] response_buf;
+	offset += bytes_read;
+	remaining -= bytes_read;
+      }
+      outfile.close();
+      delete[] request;
+    } else {
+      datamsg d(p, t, e);
+      control_channel->cwrite(&d, sizeof(datamsg));
+      double result;
+      control_channel->cread(&result, sizeof(double));
+      cout << "For person " << p << ", at time " << t << ", the value of ecg " << e << " is " << result << endl;
     }
-    data_channels.clear();
+    MESSAGE_TYPE q = QUIT_MSG;
+    for (auto i : data_channels){
+      i->cwrite(&q,sizeof(q));
+      delete i;
+    }
 
     control_channel->cwrite(&q, sizeof(q));
     delete control_channel;
-
 
     wait(NULL);
 
     cout <<"Client-side is done and exited" << endl;
     cout << "Server terminated" << endl;
   }
+  return 0;
+}
     
-
+/*
   int opt;
   int p = 1;
   double t = 0.0;
@@ -111,3 +158,4 @@ int main (int argc, char *argv[]) {
   MESSAGE_TYPE m = QUIT_MSG;
   chan.cwrite(&m, sizeof(MESSAGE_TYPE));
 }
+*/
