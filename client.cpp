@@ -1,14 +1,14 @@
 /*
-	Original author of the starter code
-    Tanzir Ahmed
-    Department of Computer Science & Engineering
-    Texas A&M University
-    Date: 2/8/20
-	
-	Please include your Name, UIN, and the date below
-	Name: Trenton Shaw
-	UIN: 534007138
-	Date: 9/18/25
+  Original author of the starter code
+  Tanzir Ahmed
+  Department of Computer Science & Engineering
+  Texas A&M University
+  Date: 2/8/20
+  
+  Please include your Name, UIN, and the date below
+  Name: Trenton Shaw
+  UIN: 534007138
+  Date: 9/18/25
 */
 #include "common.h"
 #include "FIFORequestChannel.h"
@@ -60,45 +60,45 @@ int main (int argc, char *argv[]) {
       cout << "Server terminated" << endl;
     }
     else if (p_set && t_set && e_set) {
-    // Test 2: single ECG reading
-    datamsg d(p, t, e);
-    control_channel->cwrite(&d, sizeof(datamsg));
-    double result;
-    control_channel->cread(&result, sizeof(double));
-    cout << "For person " << p << ", at time " << t << ", the value of ecg " << e << " is " << result << endl;
+      // Test 2: single ECG reading
+      datamsg d(p, t, e);
+      control_channel->cwrite(&d, sizeof(datamsg));
+      double result;
+      control_channel->cread(&result, sizeof(double));
+      cout << "For person " << p << ", at time " << t << ", the value of ecg " << e << " is " << result << endl;
     }
     else if (p_set && !t_set && !e_set && !f_set) {
-    system("mkdir -p received");
-    string out_path = "received/x" + to_string(p) + ".csv";
-    ofstream outfile(out_path);
-    for (int i = 0; i < 1000; ++i) {
+      system("mkdir -p received");
+      string out_path = "received/x" + to_string(p) + ".csv";
+      ofstream outfile(out_path);
+      for (int i = 0; i < 1000; ++i) {
         double t_val = i * 0.004;
         datamsg d(p, t_val, 1);
         control_channel->cwrite(&d, sizeof(datamsg));
         double result;
         control_channel->cread(&result, sizeof(double));
         outfile << p << "," << t_val << "," << result << endl;
+      }
+      outfile.close();
     }
-    outfile.close();
-}
-else if (f_set) {
-    // File transfer logic
-    filemsg fm(0,0);
-    int msg_size = sizeof(filemsg) + filename.size() + 1;
-    char* request = new char[msg_size];
-    memcpy(request, &fm, sizeof(filemsg));
-    strcpy(request + sizeof(filemsg), filename.c_str());
-    control_channel->cwrite(request, msg_size);
-    __int64_t file_size;
-    control_channel->cread(&file_size, sizeof(file_size));
-
-    system("mkdir -p received");
-    string out_path = "received/" + filename;
-    ofstream outfile(out_path, ios::binary);
-    __int64_t remaining = file_size;
-    __int64_t offset = 0;
-    while (remaining > 0) {
-        int chunk = min((__int64_t)MAX_MESSAGE, remaining);
+    else if (f_set) {
+      // File transfer logic
+      filemsg fm(0,0);
+      int msg_size = sizeof(filemsg) + filename.size() + 1;
+      char* request = new char[msg_size];
+      memcpy(request, &fm, sizeof(filemsg));
+      strcpy(request + sizeof(filemsg), filename.c_str());
+      control_channel->cwrite(request, msg_size);
+      __int64_t file_size;
+      control_channel->cread(&file_size, sizeof(file_size));
+      
+      system("mkdir -p received");
+      string out_path = "received/" + filename;
+      ofstream outfile(out_path, ios::binary);
+      __int64_t remaining = file_size;
+      __int64_t offset = 0;
+      while (remaining > 0) {
+	int chunk = min((__int64_t)MAX_MESSAGE, remaining);
         filemsg fm_chunk(offset, chunk);
         int msg_len = sizeof(filemsg) + filename.size() + 1;
         char* msg_buf = new char[msg_len];
@@ -112,27 +112,27 @@ else if (f_set) {
         delete[] response_buf;
         offset += bytes_read;
         remaining -= bytes_read;
+      }
+      outfile.close();
+      delete[] request;
+      
+      MESSAGE_TYPE q = QUIT_MSG;
+      for (auto i : data_channels){
+	i->cwrite(&q,sizeof(q));
+	delete i;
+      }
+      
+      control_channel->cwrite(&q, sizeof(q));
+      delete control_channel;
+      
+      wait(NULL);
+      
+      cout <<"Client-side is done and exited" << endl;
+      cout << "Server terminated" << endl;
     }
-    outfile.close();
-    delete[] request;
-    
-    MESSAGE_TYPE q = QUIT_MSG;
-    for (auto i : data_channels){
-      i->cwrite(&q,sizeof(q));
-      delete i;
-    }
-
-    control_channel->cwrite(&q, sizeof(q));
-    delete control_channel;
-
-    wait(NULL);
-
-    cout <<"Client-side is done and exited" << endl;
-    cout << "Server terminated" << endl;
+    return 0;
   }
-  return 0;
 }
-
 /*
   int opt;
   int p = 1;
