@@ -77,7 +77,7 @@ int main (int argc, char *argv[]) {
         control_channel->cwrite(&d, sizeof(datamsg));
         double result;
         control_channel->cread(&result, sizeof(double));
-        outfile << p << "," << t_val << "," << result << endl;
+        outfile << t_val << "," << result << "," << t << endl;
       }
       outfile.close();
     }
@@ -115,22 +115,21 @@ int main (int argc, char *argv[]) {
       }
       outfile.close();
       delete[] request;
-      
       MESSAGE_TYPE q = QUIT_MSG;
       for (auto i : data_channels){
 	i->cwrite(&q,sizeof(q));
 	delete i;
       }
-      
+    }
+      MESSAGE_TYPE q = QUIT_MSG;
       control_channel->cwrite(&q, sizeof(q));
       delete control_channel;
-      
+    
       wait(NULL);
-      
+    
       cout <<"Client-side is done and exited" << endl;
       cout << "Server terminated" << endl;
-    }
-    return 0;
+      return 0;
   }
 }
 /*
