@@ -73,11 +73,17 @@ int main (int argc, char *argv[]) {
       ofstream outfile(out_path);
       for (int i = 0; i < 1000; ++i) {
         double t_val = i * 0.004;
-        datamsg d(p, t_val, 1);
-        control_channel->cwrite(&d, sizeof(datamsg));
-        double result;
-        control_channel->cread(&result, sizeof(double));
-        outfile << t_val << "," << result << "," << t << endl;
+        datamsg d1(p, t_val, 1);
+        control_channel->cwrite(&d1, sizeof(datamsg));
+        double result1;
+	control_channel->cread(&result1, sizeof(double));
+	
+	datamsg d2(p, t_val, 2);  // ECG channel 2
+	control_channel->cwrite(&d2, sizeof(datamsg));
+	double result2;
+	control_channel->cread(&result2, sizeof(double));
+	
+        outfile << t_val << "," << result1 << "," << result2 << endl;
       }
       outfile.close();
     }
