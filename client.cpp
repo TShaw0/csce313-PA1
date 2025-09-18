@@ -77,7 +77,7 @@ int main (int argc, char *argv[]) {
         control_channel->cwrite(&d, sizeof(datamsg));
         double result;
         control_channel->cread(&result, sizeof(double));
-        outfile << result << endl;
+        outfile << p << "," << t_val << "," << result << endl;
     }
     outfile.close();
 }
