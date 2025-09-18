@@ -59,8 +59,8 @@ int main (int argc, char *argv[]) {
       control_channel->cwrite(request, msg_size);
       __int64_t file_size;
       control_channel->cread(&file_size, sizeof(file_size));
-      system("mkdir -p recieved");
-      string out_path = "recieved/" + filename;
+      system("mkdir -p received");
+      string out_path = "received/" + filename;
       ofstream outfile(out_path, ios::binary);
       __int64_t remaining = file_size;
       __int64_t offset = 0;
