@@ -13,12 +13,13 @@
 #include "common.h"
 #include "FIFORequestChannel.h"
 #include <sys/wait.h>
+#include <iomanip>
 using namespace std;
 
 
 int main (int argc, char *argv[]) {
   int opt;
-  bool p_set = false, t_set = false, e_set = false, f_set = false;
+  bool c_set = false, p_set = false, t_set = false, e_set = false, f_set = false;
   int p = 1;
   double t = 0.0;
   int e = 1;
@@ -41,6 +42,9 @@ int main (int argc, char *argv[]) {
     case 'f':
       filename = optarg;
       f_set = true;
+      break;
+    case 'c':
+      c_set = true;
       break;
     }
   }
@@ -127,15 +131,88 @@ int main (int argc, char *argv[]) {
 	delete i;
       }
     }
-      MESSAGE_TYPE q = QUIT_MSG;
-      control_channel->cwrite(&q, sizeof(q));
-      delete control_channel;
+
+    else if (c_set) {
+      // Handle NEWCHANNEL_MSG here
+      MESSAGE_TYPE nc = NEWCHANNEL_MSG;
+      control_channel->cwrite(&nc, sizeof(nc));
+      
+      char new_chan_name[100] = {0};
+      control_channel->cread(new_chan_name, sizeof(new_chan_name));
+      
+      FIFORequestChannel* new_chan = new FIFORequestChannel(new_chan_name, FIFORequestChannel::CLIENT_SIDE);
+      data_channels.push_back(new_chan);
+      
+      // Example: request one data point (or file if needed)
+      filemsg fm(0,0);
+      int msg_size = sizeof(filemsg)+filename.size()+1;
+      char* request = new char[msg_size];
+      memcpy(request, &fm, sizeof(filemsg));
+      strcpy(request + sizeof(filemsg), filename.c_str());
+      new_chan->cwrite(request, msg_size);
+
+      __int64_t file_size;
+      new_chan->cread(&file_size, sizeof(file_size));
+
+      system("mkdir -p recieved");
+      string out_path = "recieved/" + filename;
+      ofstream outfile(out_path, ios::binary);
+      __int64_t remaining = file_size;
+      __int64_t offset = 0;
+      
+      while (remaining > 0) {
+        int chunk = min((__int64_t)MAX_MESSAGE, remaining);
+        filemsg fm_chunk(offset, chunk);
+        int msg_len = sizeof(filemsg) + filename.size() + 1;
+        char* msg_buf = new char[msg_len];
+        memcpy(msg_buf, &fm_chunk, sizeof(filemsg));
+        strcpy(msg_buf + sizeof(filemsg), filename.c_str());
+        new_chan->cwrite(msg_buf, msg_len);
+	
+        char* response_buf = new char[chunk];
+        int bytes_read = new_chan->cread(response_buf, chunk);
+        outfile.write(response_buf, bytes_read);
+	
+        delete[] msg_buf;
+        delete[] response_buf;
+	
+        offset += bytes_read;
+        remaining -= bytes_read;
+    }
+
+    outfile.close();
+    delete[] request;
+}
+      
+
+
+	
+      //datamsg d(p, t, e);
+      //new_chan->cwrite(&d, sizeof(d));
+      //double result;
+      //new_chan->cread(&result, sizeof(double));
+      
+      //cout << "For person " << p << ", at time " << fixed << setprecision(3) << t
+    //   << ", the value of ecg " << e << " is " << fixed << setprecision(2) << result << endl;
+      
+      // Close new channel
+
     
-      wait(NULL);
+    MESSAGE_TYPE q = QUIT_MSG;
+
+    for (auto i : data_channels) {
+      i->cwrite(&q, sizeof(q));
+      delete i;
+    }
     
-      cout <<"Client-side is done and exited" << endl;
-      cout << "Server terminated" << endl;
-      return 0;
+    control_channel->cwrite(&q, sizeof(q));
+    delete control_channel;
+    
+    wait(NULL);
+    
+    cout <<"Client-side is done and exited" << endl;
+    cout << "Server terminated" << endl;
+    return 0;
   }
 }
 /*
