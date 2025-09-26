@@ -93,6 +93,16 @@ int main (int argc, char *argv[]) {
     }
     else if (f_set) {
       // File transfer logic
+      
+      MESSAGE_TYPE nc = NEWCHANNEL_MSG;
+      control_channel->cwrite(&nc, sizeof(nc));
+      
+      char new_chan_name[100] = {0};
+      control_channel->cread(new_chan_name, sizeof(new_chan_name));
+      
+      FIFORequestChannel* new_chan = new FIFORequestChannel(new_chan_name, FIFORequestChannel::CLIENT_SIDE);
+      data_channels.push_back(new_chan);
+      
       filemsg fm(0,0);
       int msg_size = sizeof(filemsg) + filename.size() + 1;
       char* request = new char[msg_size];
@@ -118,8 +128,8 @@ int main (int argc, char *argv[]) {
         char* response_buf = new char[chunk];
         int bytes_read = control_channel->cread(response_buf, chunk);
         outfile.write(response_buf, bytes_read);
-        delete[] msg_buf;
-        delete[] response_buf;
+        //delete[] msg_buf;
+        //delete[] response_buf;
         offset += bytes_read;
         remaining -= bytes_read;
       }
@@ -154,8 +164,8 @@ int main (int argc, char *argv[]) {
       __int64_t file_size;
       new_chan->cread(&file_size, sizeof(file_size));
 
-      system("mkdir -p recieved");
-      string out_path = "recieved/" + filename;
+      system("mkdir -p received");
+      string out_path = "received/" + filename;
       ofstream outfile(out_path, ios::binary);
       __int64_t remaining = file_size;
       __int64_t offset = 0;
@@ -173,8 +183,8 @@ int main (int argc, char *argv[]) {
         int bytes_read = new_chan->cread(response_buf, chunk);
         outfile.write(response_buf, bytes_read);
 	
-        delete[] msg_buf;
-        delete[] response_buf;
+        //delete[] msg_buf;
+        //delete[] response_buf;
 	
         offset += bytes_read;
         remaining -= bytes_read;
