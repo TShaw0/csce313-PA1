@@ -58,7 +58,7 @@ int main (int argc, char *argv[]) {
     usleep(100000);
     FIFORequestChannel* control_channel = new FIFORequestChannel("control", FIFORequestChannel::CLIENT_SIDE);
     vector<FIFORequestChannel*> data_channels;
-
+    
     if (!p_set && !t_set && !e_set && !f_set){
       cout << "Client-side is done and exited" << endl;
       cout << "Server terminated" << endl;
@@ -134,20 +134,14 @@ int main (int argc, char *argv[]) {
         remaining -= bytes_read;
       }
       outfile.close();
-      delete[] request;
-      MESSAGE_TYPE q = QUIT_MSG;
-      for (auto i : data_channels){
-	i->cwrite(&q,sizeof(q));
-	delete i;
-      }
     }
-
+  
     else if (c_set) {
-      // Handle NEWCHANNEL_MSG here
-      MESSAGE_TYPE nc = NEWCHANNEL_MSG;
-      control_channel->cwrite(&nc, sizeof(nc));
-      
-      char new_chan_name[100] = {0};
+    // Handle NEWCHANNEL_MSG here
+    MESSAGE_TYPE nc = NEWCHANNEL_MSG;
+    control_channel->cwrite(&nc, sizeof(nc));
+    
+    char new_chan_name[100] = {0};
       control_channel->cread(new_chan_name, sizeof(new_chan_name));
       
       FIFORequestChannel* new_chan = new FIFORequestChannel(new_chan_name, FIFORequestChannel::CLIENT_SIDE);
