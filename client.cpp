@@ -128,12 +128,13 @@ int main (int argc, char *argv[]) {
         char* response_buf = new char[chunk];
         int bytes_read = control_channel->cread(response_buf, chunk);
         outfile.write(response_buf, bytes_read);
-        //delete[] msg_buf;
-        //delete[] response_buf;
+        delete[] msg_buf;
+        delete[] response_buf;
         offset += bytes_read;
         remaining -= bytes_read;
       }
       outfile.close();
+      delete[] request;
     }
   
     else if (c_set) {
@@ -177,16 +178,16 @@ int main (int argc, char *argv[]) {
         int bytes_read = new_chan->cread(response_buf, chunk);
         outfile.write(response_buf, bytes_read);
 	
-        //delete[] msg_buf;
-        //delete[] response_buf;
+        delete[] msg_buf;
+        delete[] response_buf;
 	
         offset += bytes_read;
         remaining -= bytes_read;
-    }
+      }
 
     outfile.close();
     delete[] request;
-}
+    }
       
 
 
